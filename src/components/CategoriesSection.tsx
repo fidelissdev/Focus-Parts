@@ -8,7 +8,7 @@ import categoryAcessorios from '@/assets/category-acessorios.jpg';
 
 const categories = [
   {
-    name: 'Lanternas',
+    name: 'Linha Leve',
     description: 'Iluminação traseira de alta qualidade',
     image: categoryLanternas,
     slug: 'lanternas',
