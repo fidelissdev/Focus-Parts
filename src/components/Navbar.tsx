@@ -76,7 +76,7 @@ export const Navbar = () => {
         <Link to="/" className="flex items-center">
           <motion.img alt="Focus Parts" className="h-40 md:h-20" whileHover={{
           scale: 1.05
-        }} src="/lovable-uploads/1d45002b-d0c2-4bb1-9e3e-9afac94a63fa.png" />
+        }} src="/Focus-Parts/lovable-uploads/1d45002b-d0c2-4bb1-9e3e-9afac94a63fa.png"" />
         </Link>
 
         {/* Desktop Menu */}
