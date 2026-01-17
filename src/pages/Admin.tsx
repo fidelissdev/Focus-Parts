@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
-import { Plus, Edit, Trash2, Package, FolderOpen, ArrowLeft, Users, Search } from 'lucide-react';
+import { Plus, Edit, Trash2, Package, FolderOpen, ArrowLeft, Users, Search, Upload, X, Image } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -83,6 +83,10 @@ const Admin = () => {
     featured: false,
     active: true,
   });
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Category form state
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
@@ -149,18 +153,78 @@ const Admin = () => {
       .replace(/(^-|-$)/g, '');
   };
 
+  // Image upload handler
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const validTypes = ['image/png', 'image/jpeg', 'image/jpg'];
+    if (!validTypes.includes(file.type)) {
+      toast({
+        title: 'Formato inválido',
+        description: 'Apenas PNG, JPG e JPEG são permitidos.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setSelectedFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveImage = () => {
+    setSelectedFile(null);
+    setImagePreview(null);
+    setProductForm({ ...productForm, image_url: '' });
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const uploadImage = async (file: File): Promise<string | null> => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+    
+    const { error: uploadError } = await supabase.storage
+      .from('product-images')
+      .upload(fileName, file);
+
+    if (uploadError) {
+      throw uploadError;
+    }
+
+    const { data } = supabase.storage
+      .from('product-images')
+      .getPublicUrl(fileName);
+
+    return data.publicUrl;
+  };
+
   // Product handlers
   const handleProductSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setUploading(true);
     
-    const slug = generateSlug(productForm.name);
-    const productData = {
-      ...productForm,
-      slug,
-      category_id: productForm.category_id || null,
-    };
-
     try {
+      let imageUrl = productForm.image_url;
+
+      // Upload new image if selected
+      if (selectedFile) {
+        imageUrl = await uploadImage(selectedFile) || '';
+      }
+
+      const slug = generateSlug(productForm.name);
+      const productData = {
+        ...productForm,
+        image_url: imageUrl,
+        slug,
+        category_id: productForm.category_id || null,
+      };
+
       if (editingProduct) {
         const { error } = await supabase
           .from('products')
@@ -178,6 +242,8 @@ const Admin = () => {
 
       setProductDialogOpen(false);
       setEditingProduct(null);
+      setSelectedFile(null);
+      setImagePreview(null);
       setProductForm({
         name: '',
         code: '',
@@ -194,6 +260,8 @@ const Admin = () => {
         description: error.message,
         variant: 'destructive',
       });
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -208,6 +276,8 @@ const Admin = () => {
       featured: product.featured,
       active: product.active,
     });
+    setSelectedFile(null);
+    setImagePreview(product.image_url || null);
     setProductDialogOpen(true);
   };
 
@@ -441,13 +511,58 @@ const Admin = () => {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="image_url">URL da Imagem</Label>
-                      <Input
-                        id="image_url"
-                        value={productForm.image_url}
-                        onChange={(e) => setProductForm({ ...productForm, image_url: e.target.value })}
-                        placeholder="https://..."
+                      <Label>Imagem do Produto</Label>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".png,.jpg,.jpeg"
+                        onChange={handleFileSelect}
+                        className="hidden"
                       />
+                      
+                      {imagePreview ? (
+                        <div className="relative w-full h-40 border border-border rounded-lg overflow-hidden bg-muted">
+                          <img
+                            src={imagePreview}
+                            alt="Preview"
+                            className="w-full h-full object-contain"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleRemoveImage}
+                            className="absolute top-2 right-2 p-1 bg-destructive text-destructive-foreground rounded-full hover:bg-destructive/80 transition-colors"
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="w-full h-40 border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center gap-2 hover:border-primary hover:bg-primary/5 transition-colors"
+                        >
+                          <Upload className="text-muted-foreground" size={32} />
+                          <span className="text-sm text-muted-foreground">
+                            Clique para anexar imagem
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            PNG, JPG ou JPEG
+                          </span>
+                        </button>
+                      )}
+
+                      {imagePreview && !selectedFile && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="w-full gap-2"
+                        >
+                          <Image size={16} />
+                          Trocar imagem
+                        </Button>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="description">Descrição</Label>
@@ -482,8 +597,8 @@ const Admin = () => {
                       <Button type="button" variant="outline" onClick={() => setProductDialogOpen(false)}>
                         Cancelar
                       </Button>
-                      <Button type="submit" className="bg-primary">
-                        {editingProduct ? 'Salvar' : 'Criar'}
+                      <Button type="submit" className="bg-primary" disabled={uploading}>
+                        {uploading ? 'Enviando...' : editingProduct ? 'Salvar' : 'Criar'}
                       </Button>
                     </div>
                   </form>
