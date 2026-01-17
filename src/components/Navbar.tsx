@@ -74,7 +74,7 @@ export const Navbar = () => {
   }} className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? 'glass-effect py-2 shadow-lg' : 'bg-transparent py-4'}`}>
       <div className="container mx-auto px-4 flex items-center justify-between">
         <Link to="/" className="flex items-center">
-          <motion.img alt="Focus Parts" className="h-12 md:h-16" whileHover={{
+          <motion.img alt="Focus Parts" className="h-14 md:h-20" whileHover={{
           scale: 1.05
         }} src="/lovable-uploads/1d45002b-d0c2-4bb1-9e3e-9afac94a63fa.png" />
         </Link>

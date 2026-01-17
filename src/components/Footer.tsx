@@ -12,7 +12,7 @@ export const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Logo & Description */}
           <div className="space-y-4">
-            <img src={logo} alt="Focus Parts" className="h-14" />
+            <img src={logo} alt="Focus Parts" className="h-18" />
             <p className="text-muted-foreground text-sm">
               Especialistas em autopeças de qualidade. Iluminação, lanternas e acessórios 
               para veículos leves e pesados.
